@@ -1,0 +1,5 @@
+# Force LF everywhere: files are copied into Linux containers and run in Linux CI.
+# Overrides a global core.autocrlf=true on Windows.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
