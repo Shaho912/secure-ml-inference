@@ -1,0 +1,8 @@
+# Trivy ignore list (image CVEs and IaC misconfiguration IDs).
+#
+# Rules:
+#   - Every entry needs a comment explaining WHY it is accepted.
+#   - Every entry is also listed under "Known limitations" in README.md.
+#   - Prefer a fix over an entry. Never add an entry just to get CI green.
+#   - Prefer inline `#trivy:ignore:<ID>` on the specific Terraform resource, so the
+#     exception covers that one resource rather than the whole repo.

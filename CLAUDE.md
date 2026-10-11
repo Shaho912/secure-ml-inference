@@ -29,6 +29,19 @@ python -m venv .venv && .venv/Scripts/python -m pip install uv
 .venv/Scripts/bandit -c pyproject.toml -r app --severity-level high
 PATH="$PWD/.venv/Scripts:$PATH" bash scripts/audit_deps.sh
 ```
+Docker / scans (Git Bash: prefix `MSYS_NO_PATHCONV=1` so container paths aren't rewritten):
+```bash
+docker build -f docker/Dockerfile -t secure-ml-inference:final .
+docker run --rm -p 8000:8000 -e API_KEY=... --read-only --tmpfs /tmp --cap-drop ALL secure-ml-inference:final
+bash scripts/image_report.sh           # needs :baseline too (docker/Dockerfile.single, ~13 min, ~16 GB)
+# Workflow lint + GitHub Actions security audit (run after editing .github/):
+docker run --rm -v "$(pwd -W):/repo" -w /repo rhysd/actionlint:1.7.7
+docker run --rm -v "$(pwd -W):/repo:ro" ghcr.io/zizmorcore/zizmor:1.16.0 --offline --persona=auditor /repo/.github
+```
+CI (`.github/workflows/pipeline.yml`): lint → (test ‖ security: Bandit, pip-audit, Trivy config) →
+build-scan (Trivy image gate, SARIF, SBOM, save image) → deploy (production env approval, OIDC).
+Action pins: full SHA + `# vX.Y.Z`, release ≥14 days old. Repo vars, never `${{ }}` inside `run:`.
+
 Regenerating locks: see the header comments in `requirements.in` / `requirements-dev.in`.
 Always pass `--upgrade` (uv otherwise keeps pins from the existing output file) and
 `--index-strategy unsafe-best-match` (otherwise stale copies on the PyTorch mirror win).

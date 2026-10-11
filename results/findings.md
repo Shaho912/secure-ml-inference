@@ -63,3 +63,19 @@ Run as ECS will run it: `--read-only --tmpfs /tmp --cap-drop ALL --security-opt 
   (`inspect .Size`) and unpacked (`du -sxm /`) and labels which is which.
 - Trivy needed `--timeout 20m` for the 6.5 GB baseline (default 5m hit "context deadline exceeded").
   The same flag is used for both images.
+
+## M3: CI pipeline (2026-10-11)
+
+- Full CI job sequence simulated in a clean `python:3.12-slim` container (git-tracked files only):
+  hashed install of both locks OK, ruff OK, Bandit OK, pip-audit (both passes) 0 vulns,
+  pytest 18 passed / 98.6% coverage (gate: 90%).
+- Workflow linting: **actionlint** caught a YAML-breaking colon in a step name (GitHub would have
+  rejected the whole workflow). **zizmor** (Actions security audit) flagged 2 template-injection
+  sinks (`${{ vars.* }}` inside `run:`), now moved to `env:`, and missing Dependabot cooldowns,
+  now 14 days. Final zizmor: 0 high / 0 medium / 0 low.
+- All 9 third-party actions pinned to full commit SHAs. Each SHA was verified against the GitHub
+  API, and each release is ≥14 days old (e.g. ECS deploy v2.6.3, not v2.6.4 from 2 days ago).
+- Trivy runs from a digest-pinned image rather than `aquasecurity/trivy-action`
+  (tag hijack, March 2026).
+- Scan once, deploy that artifact: build-scan saves the scanned image, and deploy loads it.
+  Nothing is rebuilt between the scan and the push.

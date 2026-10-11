@@ -1,0 +1,44 @@
+# Keeps every pinned thing current: Python locks, action SHAs, the base-image digest, Terraform providers.
+# Updates arrive as PRs, so they go through the full pipeline (scans included) before merge.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14  # wait 14 days after a release (time for a malicious one to be caught)
+    groups:
+      python-deps:
+        patterns: ["*"]
+    # torch/torchvision use +cpu builds from the PyTorch index, which Dependabot can't resolve
+    # (it would propose the CUDA build from PyPI). Bump them manually: edit requirements.in,
+    # then re-run the uv compile command in its header.
+    ignore:
+      - dependency-name: torch
+      - dependency-name: torchvision
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14  # wait 14 days after a release (time for a malicious one to be caught)
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /docker
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14  # wait 14 days after a release (time for a malicious one to be caught)
+
+  - package-ecosystem: terraform
+    directories: ["/infra/bootstrap", "/infra/main"]
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14  # wait 14 days after a release (time for a malicious one to be caught)
