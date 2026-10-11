@@ -27,6 +27,8 @@ htmlcov/
 *.tfstate
 *.tfstate.*
 *.tfplan
+tfplan
+*.plan
 crash.log
 crash.*.log
 *.tfvars
@@ -38,7 +40,7 @@ override.tf.json
 *_override.tf.json
 
 # Scan / report output
-results/*.json
+results/trivy-*.json
 results/*.sarif
 sbom*.json
 

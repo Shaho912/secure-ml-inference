@@ -1,0 +1,18 @@
+{
+  "url": "http://localhost:8000",
+  "requests": 100,
+  "concurrency": 4,
+  "ok": 100,
+  "statuses": {
+    "200": 100
+  },
+  "transport_errors": 0,
+  "p50_ms": 308.9,
+  "p95_ms": 479.8,
+  "p99_ms": 534.0,
+  "mean_ms": 316.5,
+  "throughput_rps": 12.35,
+  "payload_bytes": 38537,
+  "label": "local-0.5cpu",
+  "measured_at": "2026-10-11T22:40:26+00:00"
+}

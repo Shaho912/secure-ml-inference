@@ -71,10 +71,13 @@ jobs:
         run: bandit -c pyproject.toml -r app --severity-level high
       - name: pip-audit (dependency scan, fail on any known vulnerability)
         run: bash scripts/audit_deps.sh requirements.txt
+      # Built-in checks plus the project's own policies/ (SMI-0001: no public ingress except 80/443,
+      # a gap in Trivy's built-in AWS-0107, which only covers ports 22/3389).
       - name: Trivy config (IaC scan, fail on HIGH/CRITICAL misconfigurations)
         run: |
           docker run --rm -v "$PWD:/src:ro" -w /src "$TRIVY_IMAGE" config \
-            --severity HIGH,CRITICAL --exit-code 1 --ignorefile .trivyignore infra/
+            --severity HIGH,CRITICAL --exit-code 1 --ignorefile .trivyignore \
+            --config-check policies --check-namespaces user infra/
 
   build-scan:
     needs: [test, security]
@@ -179,6 +182,8 @@ jobs:
           task-definition: ${{ steps.render.outputs.task-definition }}
           cluster: ${{ vars.ECS_CLUSTER }}
           service: ${{ vars.ECS_SERVICE }}
+          # Terraform creates the service at 0 tasks (ECR is empty then); deploys run 1.
+          desired-count: 1
           wait-for-service-stability: true
           wait-for-minutes: 15
       - name: Smoke test through the ALB

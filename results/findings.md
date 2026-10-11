@@ -91,3 +91,31 @@ Run as ECS will run it: `--read-only --tmpfs /tmp --cap-drop ALL --security-opt 
   that carries only "bill exceeded $X" messages. Verified the ignore is effective: removing it
   makes the scan fail with exactly this finding.
 - Cost: $0 (10 CloudWatch alarms free, 2 budgets free, SNS email free tier).
+
+## M5: main stack (infra/main, 2026-10-11)
+
+- `terraform validate` OK. `terraform plan`: 32 to add, 0 errors (read-only; nothing created).
+  Live us-east-1 prices from the AWS Price List API; cost table in README.
+- Trivy config (built-in): 0 HIGH/CRITICAL after 3 scoped inline ignores. Each was verified needed
+  by rescanning without it: AWS-0053 (public ALB, by design), AWS-0054 (HTTP listener, no domain),
+  AWS-0104 (task egress 443 to 0.0.0.0/0, no NAT/VPC endpoints). Remaining non-gating findings:
+  LOW AWS-0033/0017/0098 (customer-managed KMS keys, $1/mo each), LOW AWS-0034 (Container Insights),
+  MEDIUM AWS-0178 (VPC flow logs).
+- **Scanner gap found:** a 4th ignore (AWS-0107 on the ALB's public ingress) turned out to be
+  dead. Investigating showed Trivy 0.74's AWS-0107 only fires for ports 22/3389. A rule opening
+  the app port 8000 to 0.0.0.0/0 produced only LOW findings, so it would have **passed** the CI
+  gate. Fix: custom Rego check `policies/no_public_ingress_non_web.rego` (SMI-0001, CRITICAL),
+  public ingress only on 80/443. Tested: 0 findings on the real infra; 3/3 caught across
+  `aws_vpc_security_group_ingress_rule`, `aws_security_group_rule`, and inline `ingress {}`
+  (including `::/0`). Wired into CI. Dead ignore removed.
+- gitignore fixes: plan files saved as `tfplan` (no extension) weren't ignored and can contain
+  sensitive values; `results/*.json` would have hidden load-test results. Both fixed and tested.
+
+### Local load test (final image capped to Fargate size: --cpus 0.5 --memory 1g, hardened flags)
+| Concurrency | Requests | OK | p50 ms | p95 ms | p99 ms | req/s |
+|---|---|---|---|---|---|---|
+| 1 | 100 | 100 | 78.4 | 144.6 | 396.9 | 11.6 |
+| 4 | 100 | 100 | 308.9 | 479.8 | 534.0 | 12.4 |
+
+Service time is about 78 ms. Throughput saturates at about 12 req/s on 0.5 vCPU, so extra
+concurrency only adds queueing. Scale out (more tasks), not up (threads). Peak memory 302 MiB of 1 GiB.

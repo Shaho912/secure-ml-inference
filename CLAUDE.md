@@ -65,4 +65,6 @@ Always pass `--upgrade` (uv otherwise keeps pins from the existing output file) 
 - Never weaken a scanner to get CI green. Fix the finding, or add a commented `.trivyignore`
   entry AND list it under README "Known limitations".
 - Baseline vs final image comparisons must use identical Trivy flags.
+- Every `#trivy:ignore` must be verified needed (rescan without it). Test custom policies against a
+  deliberately bad example before trusting them.
 - Work in small steps and explain each choice.
