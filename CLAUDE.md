@@ -14,6 +14,7 @@ measurements, and limitations must be stated honestly.
 - `scripts/` — `audit_deps.sh` (pip-audit, two-pass for `+cpu` torch), `image_report.sh`, `loadtest.py`
 - `docker/` — `Dockerfile` (multi-stage, final), `Dockerfile.single` (naive baseline for comparison)
 - `infra/bootstrap/` — billing alarm + budget (apply first). `infra/main/` — everything else.
+- `policies/` — custom Trivy Rego checks (SMI-xxxx) for project invariants that built-in checks miss
 - `results/` — measured numbers that feed the README results table
 
 ## Commands (Git Bash; on Linux/CI use `.venv/bin`)
