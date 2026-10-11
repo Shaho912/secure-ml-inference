@@ -1,0 +1,9 @@
+# Dev/CI tools. Constrained to the runtime lock so versions never diverge:
+#   uv pip compile requirements-dev.in -c requirements.txt --python-platform x86_64-unknown-linux-gnu \
+#     --python-version 3.12 --index-strategy unsafe-best-match --generate-hashes --upgrade -o requirements-dev.txt
+pytest
+pytest-cov
+httpx
+ruff
+bandit
+pip-audit

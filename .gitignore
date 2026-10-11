@@ -1,0 +1,49 @@
+# Secrets — never commit. Use .env.example as the template.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.egg-info/
+
+# Model weights are downloaded at image build time, not committed
+*.pth
+*.pt
+
+# Terraform: state holds resource IDs and can hold secrets — keep local, never commit.
+# .terraform.lock.hcl IS committed (pins provider versions/hashes).
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+!example.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Scan / report output
+results/*.json
+results/*.sarif
+sbom*.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,14 @@
+# Top-level runtime dependencies. requirements.txt is the hashed Linux lock generated from this:
+#   uv pip compile requirements.in --python-platform x86_64-unknown-linux-gnu --python-version 3.12 \
+#     --index-strategy unsafe-best-match --generate-hashes --emit-index-url --upgrade -o requirements.txt
+# torch/torchvision are pinned to +cpu builds (no CUDA libraries in the image).
+# best-match resolution stops stale copies on the PyTorch mirror (e.g. setuptools 78.1.0,
+# CVE-2025-47273) from winning over current PyPI releases.
+--extra-index-url https://download.pytorch.org/whl/cpu
+fastapi
+uvicorn
+pydantic-settings
+python-multipart
+pillow
+torch==2.14.1+cpu
+torchvision==0.29.1+cpu

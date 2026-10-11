@@ -1,0 +1,29 @@
+[project]
+name = "secure-ml-inference"
+version = "0.1.0"
+description = "Containerized PyTorch image classifier on AWS ECS Fargate with a DevSecOps CI/CD pipeline"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# E/F: pycodestyle + pyflakes, I: isort, B: bugbear, UP: pyupgrade, S: bandit-style security rules
+select = ["E", "F", "I", "B", "UP", "S"]
+ignore = ["B008"]  # FastAPI's Depends()/File() in default args is the documented idiom
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "S105", "S106"]  # asserts and dummy keys are fine in tests
+"scripts/*" = ["S311"]  # non-crypto randomness is fine for load-test payloads
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = ["integration: loads the real pretrained model (slower)"]
+
+[tool.coverage.run]
+source = ["app"]
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
