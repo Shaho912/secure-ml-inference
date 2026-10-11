@@ -119,3 +119,16 @@ Run as ECS will run it: `--read-only --tmpfs /tmp --cap-drop ALL --security-opt 
 
 Service time is about 78 ms. Throughput saturates at about 12 req/s on 0.5 vCPU, so extra
 concurrency only adds queueing. Scale out (more tasks), not up (threads). Peak memory 302 MiB of 1 GiB.
+
+## M5 deploy, attempt 1 (2026-10-11)
+
+- On GitHub's runners: lint, test, security, and build-scan all **passed** (first real CI run).
+- deploy **failed** at the OIDC credentials step. CloudTrail `AssumeRoleWithWebIdentity` events
+  showed `AccessDenied` with the subject GitHub actually sends:
+  `repo:Shaho912@165518672/secure-ml-inference@1414836101:environment:production`.
+  The trust policy expected the name-only form `repo:Shaho912/secure-ml-inference:environment:production`.
+  GitHub's `sub` now embeds immutable owner/repo IDs. Fix: match the ID-qualified subject exactly
+  (stronger: a deleted-and-recreated repo with the same name can't assume the role). Not loosened
+  to a wildcard.
+- Also fixed a perpetual `plan` diff on the task definition (AWS normalizes hostPort and empty
+  lists); those fields are now explicit, so `plan` shows only real changes.

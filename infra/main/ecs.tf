@@ -43,13 +43,18 @@ resource "aws_ecs_task_definition" "app" {
     essential = true
     user      = "10001:10001"
 
-    portMappings = [{ containerPort = var.container_port, protocol = "tcp" }]
+    portMappings = [{ containerPort = var.container_port, hostPort = var.container_port, protocol = "tcp" }]
 
     # Same hardening as the local `docker run --read-only --cap-drop ALL` test.
+    # Fields AWS fills in on registration are written out explicitly, so `plan` stays empty
+    # (otherwise every plan shows a phantom diff and re-registers the task definition).
+    systemControls = []
+    volumesFrom    = []
+
     readonlyRootFilesystem = true
     mountPoints            = [{ sourceVolume = "tmp", containerPath = "/tmp", readOnly = false }]
     linuxParameters = {
-      capabilities       = { drop = ["ALL"] }
+      capabilities       = { add = [], drop = ["ALL"] }
       initProcessEnabled = true # tini as PID 1: forwards SIGTERM so uvicorn shuts down cleanly
     }
 

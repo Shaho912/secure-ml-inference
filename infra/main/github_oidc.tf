@@ -7,6 +7,11 @@ locals {
   github_oidc_arn = (var.create_github_oidc_provider
     ? aws_iam_openid_connect_provider.github[0].arn
   : "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${local.github_oidc_url}")
+
+  # ID-qualified subject, e.g. repo:Shaho912@165518672/secure-ml-inference@1414836101:environment:production
+  github_owner    = split("/", var.github_repo)[0]
+  github_name     = split("/", var.github_repo)[1]
+  github_oidc_sub = "repo:${local.github_owner}@${var.github_owner_id}/${local.github_name}@${var.github_repo_id}:environment:${var.github_environment}"
 }
 
 # AWS validates GitHub's certificate against its own trusted CAs, so no thumbprint is needed.
@@ -28,13 +33,15 @@ data "aws_iam_policy_document" "github_assume" {
       variable = "${local.github_oidc_url}:aud"
       values   = ["sts.amazonaws.com"]
     }
-    # Exact match (not StringLike with wildcards): only jobs from THIS repo running in the
-    # approval-gated "production" environment can assume the role. A PR, a fork, a feature
-    # branch, or another repo gets a different `sub` and is refused.
+    # Exact match (not StringLike with wildcards): only jobs from THIS repo (by immutable ID)
+    # running in the approval-gated "production" environment can assume the role. A PR, a fork,
+    # a feature branch, another repo, or a recreated repo with the same name gets a different
+    # `sub` and is refused. (The first deploy failed here with the name-only format; CloudTrail
+    # showed the ID-qualified subject GitHub actually sends.)
     condition {
       test     = "StringEquals"
       variable = "${local.github_oidc_url}:sub"
-      values   = ["repo:${var.github_repo}:environment:${var.github_environment}"]
+      values   = [local.github_oidc_sub]
     }
   }
 }

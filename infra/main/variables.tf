@@ -22,6 +22,22 @@ variable "github_repo" {
   default     = "Shaho912/secure-ml-inference"
 }
 
+# GitHub's OIDC `sub` claim includes the owner's and repo's numeric IDs:
+#   repo:<owner>@<owner_id>/<repo>@<repo_id>:environment:<env>
+# Binding to IDs means a deleted-then-recreated repo with the same name can't assume the role.
+# Look them up: https://api.github.com/repos/<owner>/<repo>  (fields: owner.id, id)
+variable "github_owner_id" {
+  description = "Numeric ID of the GitHub repo owner."
+  type        = number
+  default     = 165518672
+}
+
+variable "github_repo_id" {
+  description = "Numeric ID of the GitHub repo."
+  type        = number
+  default     = 1414836101
+}
+
 variable "github_environment" {
   description = "GitHub environment whose OIDC tokens may assume the deploy role."
   type        = string
