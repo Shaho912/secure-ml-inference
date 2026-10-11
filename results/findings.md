@@ -132,3 +132,24 @@ concurrency only adds queueing. Scale out (more tasks), not up (threads). Peak m
   to a wildcard.
 - Also fixed a perpetual `plan` diff on the task definition (AWS normalizes hostPort and empty
   lists); those fields are now explicit, so `plan` shows only real changes.
+
+## M5 deploy, attempt 2 (2026-10-11): production-only crash, fixed
+
+- OIDC fix worked (credentials, ECR push, task definition render all OK).
+- New tasks exited with **code 3** (uvicorn startup failure). CloudWatch logs showed torch's
+  import (`torchvision` → `torch._dynamo` → `tempfile.gettempdir()`) failing with
+  `No usable temporary directory found in ['/tmp', ...]`.
+- Root cause: ECS mounts a task volume as **root:root 0755** unless the image declares a
+  matching `VOLUME` (AWS docs: "By default, the volume permissions are set to 0755 and the owner
+  as root"). The container runs as uid 10001, so /tmp wasn't writable. The local hardening test
+  used `--tmpfs /tmp`, which is 1777, so it couldn't see the bug.
+- Reproduced locally with a root-owned 0755 tmpfs (same exit code 3, same error). Fix:
+  `chown 10001 /tmp && chmod 0700` + `VOLUME ["/tmp"]` in the runtime stage. Verified with an
+  ECS-like empty volume: /tmp is `appuser:appuser 700`, the container is healthy, and the
+  rootfs is still read-only.
+- Prevention: new CI step "Container smoke test (ECS-like runtime)" checks VOLUME /tmp is
+  declared, /tmp is owned by 10001, and /health answers with read-only rootfs and caps dropped.
+  Confirmed it fails on the broken image.
+- Side effect observed: the circuit breaker rolled back to Terraform's placeholder revision
+  (`:bootstrap`, never pushed) with desired=1, so ECS retried a pull that can't succeed until
+  the next good deploy. Doesn't recur once one good revision exists. Noted for README.

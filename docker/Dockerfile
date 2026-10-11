@@ -49,6 +49,14 @@ COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /opt/torch /opt/torch
 COPY app/ /srv/app/
 
+# /tmp is the only writable path (the root filesystem is read-only in ECS). torch needs a usable
+# temp dir at import time. ECS creates the task's /tmp volume as root:root 0755 unless the
+# image declares a VOLUME at the same path, in which case it copies this directory's ownership
+# and permissions into the volume. Owned by appuser, mode 0700: only the app can use it.
+# (Must come before VOLUME: changes to a path after its VOLUME line are discarded.)
+RUN chown 10001:10001 /tmp && chmod 0700 /tmp
+VOLUME ["/tmp"]
+
 WORKDIR /srv
 USER 10001:10001
 EXPOSE 8000

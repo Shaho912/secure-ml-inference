@@ -33,7 +33,8 @@ PATH="$PWD/.venv/Scripts:$PATH" bash scripts/audit_deps.sh
 Docker / scans (Git Bash: prefix `MSYS_NO_PATHCONV=1` so container paths aren't rewritten):
 ```bash
 docker build -f docker/Dockerfile -t secure-ml-inference:final .
-docker run --rm -p 8000:8000 -e API_KEY=... --read-only --tmpfs /tmp --cap-drop ALL secure-ml-inference:final
+# ECS-like: an empty volume at /tmp (NOT --tmpfs, which is 1777 and hid a Fargate bug)
+docker run --rm -p 8000:8000 -e API_KEY=... --read-only --mount type=volume,dst=/tmp --cap-drop ALL secure-ml-inference:final
 bash scripts/image_report.sh           # needs :baseline too (docker/Dockerfile.single, ~13 min, ~16 GB)
 # Workflow lint + GitHub Actions security audit (run after editing .github/):
 docker run --rm -v "$(pwd -W):/repo" -w /repo rhysd/actionlint:1.7.7

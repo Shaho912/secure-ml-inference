@@ -91,6 +91,26 @@ jobs:
           persist-credentials: false
       - name: Build image
         run: docker build -f docker/Dockerfile -t "$IMAGE_NAME:$GITHUB_SHA" .
+      # Run the image the way ECS Fargate will. ECS mounts the task's /tmp volume as root:root 0755
+      # unless the image declares VOLUME /tmp (then it copies the image's /tmp ownership), and
+      # torch needs a writable temp dir at import. This step exists because that exact failure
+      # first surfaced in production (exit code 3 on startup).
+      - name: Container smoke test (ECS-like runtime)
+        run: |
+          img="$IMAGE_NAME:$GITHUB_SHA"
+          docker image inspect "$img" --format '{{json .Config.Volumes}}' | grep -q '"/tmp"' \
+            || { echo "::error::image must declare VOLUME /tmp (ECS would mount it root-owned 0755)"; exit 1; }
+          owner=$(docker run --rm --entrypoint stat "$img" -c '%u' /tmp)
+          [ "$owner" = "10001" ] || { echo "::error::/tmp must be owned by uid 10001, got $owner"; exit 1; }
+          docker run -d --name smoke -p 8000:8000 -e API_KEY=ci-smoke-test-key-0123456789 \
+            --read-only --mount type=volume,dst=/tmp --cap-drop ALL \
+            --security-opt no-new-privileges:true "$img"
+          for _ in $(seq 1 30); do
+            if curl -fsS localhost:8000/health; then docker rm -f smoke >/dev/null; exit 0; fi
+            sleep 2
+          done
+          docker logs smoke
+          exit 1
       - name: "Trivy image scan (gate: fail on fixable HIGH/CRITICAL)"
         run: |
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$TRIVY_IMAGE" image \
