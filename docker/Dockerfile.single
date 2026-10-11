@@ -1,0 +1,14 @@
+# BASELINE ONLY — the "typical tutorial" image, kept to measure what the final Dockerfile improves.
+# Do not deploy. Problems on purpose: full python base (compilers, headers, many OS packages),
+# default PyPI torch (bundles CUDA libraries a CPU service never uses), no lockfile/hashes,
+# pip cache left in the layer, model downloaded on first request, runs as root.
+FROM python:3.12
+
+WORKDIR /app
+COPY app/ ./app/
+# Same torch/torchvision release as the final image, so the comparison isolates the build approach.
+RUN pip install fastapi uvicorn pydantic-settings python-multipart pillow \
+    torch==2.14.1 torchvision==0.29.1
+
+EXPOSE 8000
+CMD ["uvicorn", "--factory", "app.main:app_factory", "--host", "0.0.0.0", "--port", "8000"]

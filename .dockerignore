@@ -1,0 +1,6 @@
+# Allowlist: the build context contains only what the Dockerfiles COPY.
+# Keeps .env, .git, tfstate, and the venv out of the context, so they can't leak into a layer.
+*
+!app/
+!requirements.txt
+**/__pycache__

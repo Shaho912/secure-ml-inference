@@ -26,5 +26,9 @@ def configure_logging(level: str) -> None:
     root = logging.getLogger()
     root.handlers = [handler]
     root.setLevel(level)
+    # Route uvicorn's own logs through the JSON handler so every line in CloudWatch parses.
+    for name in ("uvicorn", "uvicorn.error"):
+        logging.getLogger(name).handlers = []
+        logging.getLogger(name).propagate = True
     # Our middleware logs every request; uvicorn's access log would duplicate it.
     logging.getLogger("uvicorn.access").disabled = True

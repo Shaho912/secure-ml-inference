@@ -28,3 +28,38 @@ pip-audit reported `torch (2.14.1+cpu)` / `torchvision (0.29.1+cpu)` as "not fou
 be audited". Mitigation in `scripts/audit_deps.sh`: a second pass with `+cpu` stripped (same source
 release). Positive control: `torch==2.2.0` → 23 advisories detected, so the second pass really works.
 Trivy's image scan covers the installed packages as a further layer (M2).
+
+## M2: container (2026-10-11)
+
+### Final image runtime hardening (verified locally)
+Run as ECS will run it: `--read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges`.
+- `id` → `uid=10001(appuser)`. Writes to `/srv/app` and `/opt/torch` fail (read-only), `/tmp` works.
+- `/predict` with key → 200 (top-5, ~45 ms inference on a laptop CPU). Without key → 401.
+- No `server` response header. All log lines are JSON, including uvicorn's own.
+- Model load at startup: ~4.9 s (mostly `import torch`). This sets the ECS health-check grace period.
+
+### Final image Trivy breakdown (HIGH/CRITICAL, Trivy 0.74.0)
+- 0 CRITICAL. 0 fixable HIGH, so the CI gate (`--ignore-unfixed`) passes.
+- 0 findings in Python packages (torch, torchvision, pillow, fastapi, ...).
+- All remaining HIGHs are Debian 13 base OS packages with no fix released yet
+  (`affected` / `fix_deferred`): util-linux family, ncurses, libsystemd/libudev, libacl, perl-base.
+  These are Debian "Essential" packages, so they can't be cleanly apt-removed.
+  Next step: a distroless or Wolfi-based Python runtime image.
+
+### Baseline vs final (scripts/image_report.sh, identical Trivy flags, HIGH/CRITICAL)
+| Image | Compressed MB (ECR/pull) | Unpacked MB | Gate (fixable) H/C | Total H/C | User | OS pkgs | CUDA pkgs |
+|---|---|---|---|---|---|---|---|
+| baseline (`Dockerfile.single`) | 6555 | 9587 | 0 / 0 | 314 / 16 | root | 469 | 15 |
+| final (`Dockerfile`) | 297 | 988 | 0 / 0 | 44 / 0 | 10001 | 87 | 0 |
+
+- 95% smaller compressed (lower ECR storage cost, faster Fargate pulls). 86% fewer HIGH, CRITICAL 16 → 0.
+- Honest note: the baseline also passes a fixable-only gate today, because Docker Hub base
+  images are freshly patched. The improvement is attack surface, not the gate result.
+  That's why both counts are reported.
+- Size steps: CPU-only torch + slim base + multi-stage = 336 MB. Stripping torch/include,
+  torch/test and pip after the hash-verified install = 297 MB.
+- "Size" gotcha: with Docker Desktop's containerd store, `docker image ls` shows disk usage
+  (16.6 GB / 1.54 GB), which differs from both numbers above. The table uses compressed
+  (`inspect .Size`) and unpacked (`du -sxm /`) and labels which is which.
+- Trivy needed `--timeout 20m` for the 6.5 GB baseline (default 5m hit "context deadline exceeded").
+  The same flag is used for both images.
