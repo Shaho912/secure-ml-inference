@@ -79,3 +79,15 @@ Run as ECS will run it: `--read-only --tmpfs /tmp --cap-drop ALL --security-opt 
   (tag hijack, March 2026).
 - Scan once, deploy that artifact: build-scan saves the scanned image, and deploy loads it.
   Nothing is rebuilt between the scan and the push.
+
+## M4: billing guardrails (infra/bootstrap, 2026-10-11)
+
+- `terraform fmt -check`, `init -backend=false`, `validate`: pass (Terraform 1.16.3 via Docker,
+  hashicorp/aws 6.66.0). Lock file has hashes for linux_amd64, windows_amd64, darwin_arm64.
+- Trivy config: 0 findings at all severities, with one justified inline ignore:
+  **AWS-0095 (HIGH), SNS topic not encrypted.** Accepted for the billing-alert topic only:
+  CloudWatch alarms can't publish to a topic encrypted with the AWS-managed `aws/sns` key (its key
+  policy can't grant CloudWatch access), and a customer-managed KMS key costs $1/month for a topic
+  that carries only "bill exceeded $X" messages. Verified the ignore is effective: removing it
+  makes the scan fail with exactly this finding.
+- Cost: $0 (10 CloudWatch alarms free, 2 budgets free, SNS email free tier).
