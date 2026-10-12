@@ -5,6 +5,15 @@ on:
   pull_request:
   push:
     branches: [main]
+    # Pushes that only touch docs, measurements, or local helper scripts don't change what's
+    # deployed, so they don't trigger a deploy. Not applied to pull_request: required status
+    # checks must always report on PRs, or the ruleset would block the merge forever.
+    paths-ignore:
+      - "**.md"
+      - "results/**"
+      - "scripts/teardown.sh"
+      - "scripts/loadtest.py"
+      - "scripts/image_report.sh"
   workflow_dispatch:
 
 # Least privilege by default; jobs that need more ask for it explicitly.

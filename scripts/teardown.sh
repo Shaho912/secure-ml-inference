@@ -41,9 +41,19 @@ verify() {
   check "VPC"                    aws_ ec2 describe-vpcs --filters "Name=tag:project,Values=$PROJECT" "Name=tag:stack,Values=main" --query 'Vpcs[].VpcId' --output text
   check "IAM roles"              aws iam list-roles --query "Roles[?starts_with(RoleName, '$PROJECT-')].RoleName" --output text
   check "GitHub OIDC provider"   aws iam list-open-id-connect-providers --query "OpenIDConnectProviderList[?contains(Arn, 'token.actions.githubusercontent.com')].Arn" --output text
-  # Anything else still carrying the main stack's tags. Stopped ECS tasks (:task/) are excluded:
-  # they're records, not billable resources, and AWS expires them on its own.
-  check "Other tagged resources" aws_ resourcegroupstaggingapi get-resources --tag-filters "Key=project,Values=$PROJECT" "Key=stack,Values=main" --query "ResourceTagMappingList[?!contains(ResourceARN, ':task/')].ResourceARN" --output text
+  # Safety net for anything not checked above. This is a WARNING, not a failure: the tagging index
+  # is eventually consistent and keeps listing deleted resources (security groups, INACTIVE ECS
+  # clusters/services, task definitions being deleted) for up to about an hour after a destroy.
+  # The direct checks above are authoritative. Stopped ECS tasks (:task/) are excluded as well:
+  # they're records, not billable resources.
+  local tagged
+  tagged="$(aws_ resourcegroupstaggingapi get-resources --tag-filters "Key=project,Values=$PROJECT" "Key=stack,Values=main" \
+    --query "ResourceTagMappingList[?!contains(ResourceARN, ':task/')].ResourceARN" --output text 2>/dev/null | tr -s '[:space:]' ' ')" || tagged=""
+  if [ -n "${tagged// /}" ]; then
+    echo "  warn  tag index still lists (often just lag; re-run --verify in ~1h): $tagged"
+  else
+    echo "  clean tag index"
+  fi
   echo
   if [ "$left" -eq 0 ]; then echo "All clean: nothing from the main stack remains."; else echo "$left item type(s) remain (see LEFT above)."; fi
   return "$left"

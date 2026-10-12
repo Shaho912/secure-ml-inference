@@ -182,3 +182,13 @@ Push to production ≈ 7 min of pipeline time, plus however long the approval ta
 CI registers a new task-definition revision per deploy (`:2`, `:3`); Terraform only tracks `:1`,
 so `terraform destroy` alone would leave them behind. `scripts/teardown.sh` runs destroy, then
 deregisters and deletes the remaining revisions, then verifies 14 resource types are gone.
+
+## Teardown (2026-10-12)
+
+`scripts/teardown.sh`: `Destroy complete! Resources: 32 destroyed`, CI revisions :2/:3 deregistered and
+deleted, and all 13 direct checks clean. The tagging API still listed security groups, the INACTIVE
+cluster/service, and task definitions; checked each directly: SG and rules NotFound, cluster/service
+INACTIVE, task definitions DELETE_IN_PROGRESS, 0 tasks / 0 ENIs / 0 EIPs. That's index lag, so the
+script now reports the tag index as a warning rather than a failure.
+Two script bugs fixed: `terraform -chdir=/c/...` fails on Git Bash when `MSYS_NO_PATHCONV=1` (Windows
+terraform.exe can't resolve MSYS paths), and the eventually consistent tag index gave a false "LEFT".
