@@ -51,7 +51,9 @@ verify() {
 
 if [ "${1:-}" != "--verify" ]; then
   echo "== terraform destroy (infra/main) =="
-  terraform -chdir="$ROOT/infra/main" destroy
+  # cd in a subshell rather than `terraform -chdir=...`: with MSYS_NO_PATHCONV set, Git Bash no
+  # longer translates /c/... paths, and a Windows terraform.exe can't resolve them.
+  (cd "$ROOT/infra/main" && terraform destroy)
 
   echo "== Deregistering + deleting task-definition revisions registered by CI =="
   for arn in $(aws_ ecs list-task-definitions --family-prefix "$PROJECT" --status ACTIVE --query 'taskDefinitionArns' --output text); do
