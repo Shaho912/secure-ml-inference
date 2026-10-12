@@ -153,3 +153,32 @@ concurrency only adds queueing. Scale out (more tasks), not up (threads). Peak m
 - Side effect observed: the circuit breaker rolled back to Terraform's placeholder revision
   (`:bootstrap`, never pushed) with desired=1, so ECS retried a pull that can't succeed until
   the next good deploy. Doesn't recur once one good revision exists. Noted for README.
+
+## M5 deploy, attempt 3 (2026-10-12): success
+
+GitHub Actions run #3 (`21c0d19`), all green:
+| Job | Duration |
+|---|---|
+| lint | 13 s |
+| test (‖ security 22 s) | 53 s |
+| build-scan (build, ECS-like smoke test, Trivy gate, SARIF, SBOM) | 124 s |
+| deploy (approval → stable service + ALB smoke test) | **232 s** (ECR push 30 s, ECS rollout 168 s) |
+
+Push to production ≈ 7 min of pipeline time, plus however long the approval takes.
+
+### AWS load test (300 requests, concurrency 4, 38.5 KB JPEG, from a home connection)
+| Layer | p50 ms | p95 ms | p99 ms |
+|---|---|---|---|
+| Client (scripts/loadtest.py, full round trip) | 217.7 | 394.8 | 504.1 |
+| ALB TargetResponseTime | 207.9 | 378.0 | 492.7 |
+| App PredictLatency (log metric filter) | 198.4 | 343.0 | 404.9 |
+
+- 300/300 OK, 16.27 req/s. ALB counted 313 requests (300 + 10 warm-up + health/smoke checks).
+- The network and ALB add ~10 ms each; the rest is in-container. ECS CPU max 99.9%, memory max 27.8%:
+  CPU-bound at 0.5 vCPU, as the local test predicted. Fargate's 0.5 vCPU beat the laptop's
+  `--cpus 0.5` simulation (16.3 vs 12.4 req/s).
+
+### Teardown gap found
+CI registers a new task-definition revision per deploy (`:2`, `:3`); Terraform only tracks `:1`,
+so `terraform destroy` alone would leave them behind. `scripts/teardown.sh` runs destroy, then
+deregisters and deletes the remaining revisions, then verifies 14 resource types are gone.
