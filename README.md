@@ -1,4 +1,4 @@
-# secure-ml-inference
+# Secure-ml-inference
 
 A PyTorch image classifier served by FastAPI on **AWS ECS Fargate**, shipped by a **DevSecOps
 pipeline**. Every change is linted, tested, and scanned for code, dependency, container, and
