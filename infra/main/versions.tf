@@ -4,7 +4,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "6.66.0" # exact pin; Dependabot proposes bumps after a 14-day cooldown
+      version = "6.68.0" # exact pin; Dependabot proposes bumps after a 14-day cooldown
     }
   }
   # State is local and gitignored: CI never runs Terraform (it only pushes images and
