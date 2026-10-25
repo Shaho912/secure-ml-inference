@@ -5,7 +5,7 @@ terraform {
     aws = {
       source = "hashicorp/aws"
       # Exact pin; Dependabot proposes bumps after a 14-day cooldown.
-      version = "6.66.0"
+      version = "6.68.0"
     }
   }
   # State is local and gitignored. This stack is tiny and applied once by a human.
